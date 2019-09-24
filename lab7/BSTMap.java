@@ -9,17 +9,21 @@ public class BSTMap<K extends Comparable<K>, V> implements Map61B<K, V> {
     /* Represents one node in the linked list that stores the
     key-value pair in the dictionary
      */
+    private static final boolean RED = true;
+    private static final boolean BLACK = false;
     private class Node {
         K key;
         V val;
         Node left, right;
         Node parent;
+        boolean color;
         int size;
 
-        Node(K k, V v) {
+        Node(K k, V v, boolean color, int size) {
             key = k;
             val = v;
-            size = 1;
+            this.size = size;
+            this.color = color;
         }
 
     }
@@ -30,6 +34,37 @@ public class BSTMap<K extends Comparable<K>, V> implements Map61B<K, V> {
         root = null;
     }
 
+    private Node rotateLeft(Node A) {
+        Node B = A.right;
+        A.right = B.left;
+        B.left = A;
+        B.parent = A.parent;
+        A.parent = B;
+        B.color = A.color;
+        A.color = RED;
+        B.size = A.size;
+        A.size = 1 + size(A.left) + size(A.right);
+        return B;
+    }
+
+    private Node rotateRight(Node A) {
+        Node B = A.left;
+        A.left = B.right;
+        B.right = A;
+        B.parent = A.parent;
+        A.parent = B;
+        B.color = A.color;
+        A.color = RED;
+        B.size = A.size;
+        A.size = 1 + size(A.left) + size(A.right);
+        return B;
+    }
+
+    private void flipColor(Node A) {
+        A.color = RED;
+        A.left.color = BLACK;
+        A.right.color = BLACK;
+    }
     /* return true if this map contains a mapping for the
     specified key
      */
@@ -38,6 +73,13 @@ public class BSTMap<K extends Comparable<K>, V> implements Map61B<K, V> {
             throw new IllegalArgumentException();
         }
         return get(key) != null;
+    }
+
+    private boolean isRed(Node node) {
+        if (node == null) {
+            return false;
+        }
+        return node.color == RED;
     }
     /* Return the value to which the specified key is mapped or
     null if this map contains no mapping for the key
@@ -72,46 +114,44 @@ public class BSTMap<K extends Comparable<K>, V> implements Map61B<K, V> {
         if (node == null) {
             return 0;
         }
-        return size(node.left) + size(node.right) + 1;
+        return node.size;
     }
 
     /* Associates the specified value with the specified key in
     this map
      */
     public void put(K key, V value) {
-        put(root, key, value);
+        root = put(root, key, value);
+        root.color = BLACK;
     }
 
-    private void put(Node node, K key, V value) {
+    private Node put(Node node, K key, V value) {
         if (node == null) {
-            root = new Node(key, value);
-            return;
+            return new Node(key, value, RED, 1);
         }
-        Node n = new Node(key, value);
         int cmp = key.compareTo(node.key);
-        if (cmp == 0) {
-            node.val = value;
-        } else if (cmp < 0) {
-            if (node.left == null) {
-                node.left = n;
-                n.parent = node;
-                return;
-            }
-            node.size = size(node.left) + size(node.right) + 1;
-            put(node.left, key, value);
+        if (cmp < 0) {
+            node.left = put(node.left, key, value);
+        } else if (cmp > 0) {
+            node.right = put(node.right, key, value);
         } else {
-            if (node.right == null) {
-                node.right = n;
-                n.parent = node;
-                return;
-            }
-            node.size = size(node.left) + size(node.right) + 1;
-            put(node.right, key, value);
+            node.val = value;
         }
+        if (isRed(node.right) && !isRed(node.left)) {
+            node = rotateLeft(node);
+        }
+        if (isRed(node.left) && isRed(node.left.left)) {
+            node = rotateRight(node);
+        }
+        if (isRed(node.left) && isRed(node.right)) {
+            flipColor(node);
+        }
+        node.size = 1 + size(node.left) + size(node.right);
+        return node;
     }
 
     public Set<K> keySet() {
-        Set<K> set = new HashSet<>();
+        Set<K> set = new HashSet<K>();
         Iterator<K> iter = iterator();
         while (iter.hasNext()) {
             K key = iter.next();
